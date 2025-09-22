@@ -19,8 +19,6 @@
     };
   </script>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
@@ -34,8 +32,6 @@
   </div>
   <div id="root"></div>
 
-
-  <script type="text/babel" data-presets="es2015,react">
 
   <script type="text/babel" data-presets="env,react">
 
@@ -379,9 +375,6 @@
                     <CategoryCard
                       title="Pipe unions"
                       allowed={evaluation.categories.pipeUnions}
-
-                      details={evaluation.details.pipeUnionsRule && evaluation.details.pipeUnionsRule.reason}
-
                       details={evaluation.details.pipeUnionsRule?.reason}
 
                       items={[{ label: "Welded/Brazed", kind: "pipe_welded_brazed", available: evaluation.categories.pipeUnions }]}
@@ -434,11 +427,7 @@
             <footer className="pb-10 text-xs text-slate-400">v0.7 • Naval Ships – Motor de decisión con notas en español y visor de referencias gráficas (SVG) por tipo de unión.</footer>
           </main>
 
-
-          {viewer && viewer.open && (
-
           {viewer?.open && (
-
             <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setViewer(null)}>
               <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center mb-3">
