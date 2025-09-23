@@ -201,9 +201,6 @@
       const [designPressureBar, setDesignPressureBar] = useState(7.5);
       const [designTemperatureC, setDesignTemperatureC] = useState(25);
       const [space, setSpace] = useState("other_machinery");
-      const [belowWTI, setBelowWTI] = useState(false);
-      const [insideTank, setInsideTank] = useState(false);
-      const [sameMediumTank, setSameMediumTank] = useState(false);
       const [evaluation, setEvaluation] = useState(null);
       const [viewer, setViewer] = useState(null);
       const [viewerImageSrc, setViewerImageSrc] = useState("");
@@ -251,14 +248,13 @@
         }
 
         if (["cargo_hold", "tank"].includes(space)) {
-          if (!(insideTank && sameMediumTank)) notes.push("5.10.9: Slip‑on joints no en bodegas/tanques o espacios no accesibles; dentro de tanques solo si el medio es el mismo.");
+          notes.push("5.10.9: Slip‑on joints no en bodegas/tanques o espacios no accesibles; dentro de tanques solo si el medio es el mismo.");
         }
 
         notes.push("5.10.10: El tipo Slip no debe usarse como medio principal de conexión (salvo compensación axial).");
         notes.push("5.10.5: Las juntas mecánicas deben resistir presión de rotura ≥ 4 × presión de diseño.");
         notes.push("5.10.12: Ensayos de tipo conforme a LR Type Approval Test Spec No. 2, según servicio.");
-
-        if (belowWTI) notes.push("5.10.6: Prohibidas juntas mecánicas si el tramo está conectado directamente al costado por debajo del límite de integridad estanca.");
+        notes.push("5.10.6: Si el tramo está conectado directamente al costado por debajo del límite de integridad estanca, las juntas mecánicas están prohibidas.");
 
         const isSteam = sys.system.toLowerCase() === "steam" || sys.mediumGroup === "steam";
         if (isSteam && designPressureBar <= 10 && space === "open_deck") notes.push("5.10.11: En buques tanque (oil/chemical), permitido 'restrained slip‑on' para vapor ≤ 10 bar en cubierta expuesta para absorber movimiento axial.");
@@ -385,17 +381,11 @@
         const allowAfterLocation = { ...base };
         const catNotes = [];
 
-        if (belowWTI) {
-          const reasons = ["5.10.6: Prohibido en tramos directamente conectados al costado por debajo del límite de integridad estanca."];
-          setEvaluation({ sys, usedClass, categories: { pipeUnions: false, compression: false, slipOn: false }, reasons, details: {}, notes: buildComplianceNotes(sys, usedClass, catNotes) });
-          return;
-        }
-
         if (["category_a", "accommodation", "munition_store"].includes(space)) {
           allowAfterLocation.slipOn = false;
           catNotes.push("Nota 2: Slip‑on bloqueado por la ubicación seleccionada.");
         }
-        if (["cargo_hold", "tank"].includes(space) && !(insideTank && sameMediumTank)) {
+        if (["cargo_hold", "tank"].includes(space)) {
           allowAfterLocation.slipOn = false;
           catNotes.push("5.10.9: Slip‑on bloqueado en bodegas/tanques (salvo mismo medio dentro del tanque).");
         }
@@ -517,15 +507,10 @@
               }
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-1 gap-4">
               <${Field} label="Diámetro exterior OD [mm]">
                 <input type="number" className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2" value=${odMM} onChange=${(e) => setOdMM(Number(e.target.value))} />
               </${Field}>
-              <${Toggle} label="Conexión directa al costado por debajo del límite WTI (5.10.6)" value=${belowWTI} onChange=${setBelowWTI} />
-              <div className="grid grid-cols-2 gap-3">
-                <${Toggle} label="¿Dentro de tanque? (5.10.9)" value=${insideTank} onChange=${setInsideTank} />
-                <${Toggle} label="Si está en tanque: ¿medio igual al del tanque? (excepción 5.10.9)" value=${sameMediumTank} onChange=${setSameMediumTank} />
-              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -676,17 +661,6 @@
         <div className="mb-1 text-slate-300">${label}</div>
         ${children}
       </label>`;
-    }
-
-    function Toggle({ label, value, onChange }) {
-      const buttonClass = `w-12 h-7 rounded-full transition-colors ${value ? "bg-emerald-400" : "bg-slate-600"}`;
-      const knobClass = `block w-6 h-6 bg-white rounded-full mt-0.5 transition-transform ${value ? "translate-x-5" : "translate-x-1"}`;
-      return html`<div className="flex items-center justify-between px-3 py-2 bg-slate-800/60 border border-slate-600 rounded-xl">
-        <span className="text-sm text-slate-200">${label}</span>
-        <button onClick=${() => onChange(!value)} className=${buttonClass} aria-pressed=${value}>
-          <span className=${knobClass}></span>
-        </button>
-      </div>`;
     }
 
     function CategoryCard({ title, allowed, details, items, onView }) {
