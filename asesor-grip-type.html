@@ -36,7 +36,51 @@
 
   <script type="text/babel" data-presets="env,react">
 
-    const { useState } = React;
+    const { useState, useEffect, useRef } = React;
+
+    const JOINT_IMAGES = {
+      pipe_welded_brazed: "./assets/joints/pipe-welded-brazed.jpg",
+      compression_swage: "./assets/joints/compression-swage.jpg",
+      compression_press: "./assets/joints/compression-press.jpg",
+      compression_typical: "./assets/joints/compression-typical.jpg",
+      compression_bite: "./assets/joints/compression-bite.jpg",
+      compression_flared: "./assets/joints/compression-flared.jpg",
+      slip_machine_grooved: "./assets/joints/slip-machine-grooved.jpg",
+      slip_grip: "./assets/joints/slip-grip.jpg",
+      slip_slip: "./assets/joints/slip-slip.jpg",
+      notFound: "./assets/joints/not-found.jpg",
+    };
+
+    const JOINT_LABELS = {
+      pipe_welded_brazed: "Welded and Brazed Types (uniones soldadas y por braseado)",
+      compression_swage: "Swage Type (swage)",
+      compression_press: "Press Type (prensado)",
+      compression_typical: "Typical Compression Type (compresión “típica” con férula)",
+      compression_bite: "Bite Type (anillo mordedor)",
+      compression_flared: "Flared Type (abocardado/abocinado)",
+      slip_machine_grooved: "Machine Grooved Type — Roll Groove / Cut Groove (ranura laminada / ranura mecanizada)",
+      slip_grip: "Grip Type (tipo “grip”/agarre)",
+      slip_slip: "Slip Type (tipo “slip”/deslizante)",
+    };
+
+    const JOINT_TITLES = {
+      pipe_welded_brazed: `Pipe unions — ${JOINT_LABELS.pipe_welded_brazed}`,
+      compression_swage: `Compression couplings — ${JOINT_LABELS.compression_swage}`,
+      compression_press: `Compression couplings — ${JOINT_LABELS.compression_press}`,
+      compression_typical: `Compression couplings — ${JOINT_LABELS.compression_typical}`,
+      compression_bite: `Compression couplings — ${JOINT_LABELS.compression_bite}`,
+      compression_flared: `Compression couplings — ${JOINT_LABELS.compression_flared}`,
+      slip_machine_grooved: `Slip-on Joints — ${JOINT_LABELS.slip_machine_grooved}`,
+      slip_grip: `Slip-on Joints — ${JOINT_LABELS.slip_grip}`,
+      slip_slip: `Slip-on Joints — ${JOINT_LABELS.slip_slip}`,
+    };
+
+    const VIEW_HASH_REGEX = /^#view:([a-z0-9_]+)$/i;
+
+    const parseViewHash = (hash) => {
+      const match = hash.match(VIEW_HASH_REGEX);
+      return match ? match[1] : null;
+    };
 
     const SearchIcon = ({ className = "w-4 h-4", ...props }) => (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -138,6 +182,110 @@
       const [sameMediumTank, setSameMediumTank] = useState(false);
       const [evaluation, setEvaluation] = useState(null);
       const [viewer, setViewer] = useState(null);
+      const [viewerImage, setViewerImage] = useState({ src: "", loading: false });
+      const initialHistoryLengthRef = useRef(window.history.length);
+      const initialHashKind = parseViewHash(window.location.hash);
+      const initialHashWasViewRef = useRef(Boolean(initialHashKind));
+
+      function openViewer(kind) {
+        const title = JOINT_TITLES[kind] || `Vista de referencia (${kind})`;
+        setViewer({ open: true, kind, title });
+        const targetHash = `#view:${kind}`;
+        if (window.location.hash !== targetHash) {
+          window.location.hash = targetHash;
+        }
+      }
+
+      function closeViewer() {
+        if (!viewer?.open) return;
+        const targetHash = `#view:${viewer.kind}`;
+        if (window.location.hash === targetHash) {
+          if (window.history.length > initialHistoryLengthRef.current) {
+            window.history.back();
+          } else if (initialHashWasViewRef.current) {
+            window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+            initialHashWasViewRef.current = false;
+            setViewer(null);
+          } else {
+            setViewer(null);
+          }
+        } else {
+          setViewer(null);
+        }
+      }
+
+      useEffect(() => {
+        const syncFromHash = () => {
+          const kind = parseViewHash(window.location.hash);
+          if (kind) {
+            const title = JOINT_TITLES[kind] || `Vista de referencia (${kind})`;
+            setViewer({ open: true, kind, title });
+          } else {
+            setViewer(null);
+          }
+        };
+
+        syncFromHash();
+        window.addEventListener("hashchange", syncFromHash);
+        return () => window.removeEventListener("hashchange", syncFromHash);
+      }, []);
+
+      useEffect(() => {
+        if (!viewer?.open) {
+          setViewerImage({ src: "", loading: false });
+          return;
+        }
+
+        let cancelled = false;
+        const primarySrc = JOINT_IMAGES[viewer.kind] || JOINT_IMAGES.notFound;
+        setViewerImage({ src: primarySrc, loading: true });
+
+        const loader = new Image();
+        loader.onload = () => {
+          if (!cancelled) {
+            setViewerImage({ src: primarySrc, loading: false });
+          }
+        };
+        loader.onerror = () => {
+          if (cancelled) return;
+          if (primarySrc !== JOINT_IMAGES.notFound) {
+            const fallback = JOINT_IMAGES.notFound;
+            const fallbackLoader = new Image();
+            fallbackLoader.onload = () => {
+              if (!cancelled) {
+                setViewerImage({ src: fallback, loading: false });
+              }
+            };
+            fallbackLoader.onerror = () => {
+              if (!cancelled) {
+                setViewerImage({ src: fallback, loading: false });
+              }
+            };
+            fallbackLoader.src = fallback;
+          } else {
+            setViewerImage({ src: primarySrc, loading: false });
+          }
+        };
+        loader.src = primarySrc;
+
+        return () => {
+          cancelled = true;
+        };
+      }, [viewer]);
+
+      useEffect(() => {
+        if (!viewer?.open) return;
+
+        const onKeyDown = (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            closeViewer();
+          }
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+      }, [viewer]);
 
       function suggestClass(mediumGroup, P, T) {
         const lim = CLASS_LIMITS[mediumGroup];
@@ -377,9 +525,14 @@
                       title="Pipe unions"
                       allowed={evaluation.categories.pipeUnions}
                       details={evaluation.details.pipeUnionsRule?.reason}
-
-                      items={[{ label: "Welded/Brazed", kind: "pipe_welded_brazed", available: evaluation.categories.pipeUnions }]}
-                      onView={(kind) => setViewer({ open: true, title: "Pipe unions – welded/brazed", kind })}
+                      items={[
+                        {
+                          label: JOINT_LABELS.pipe_welded_brazed,
+                          kind: "pipe_welded_brazed",
+                          available: evaluation.categories.pipeUnions,
+                        },
+                      ]}
+                      onView={openViewer}
                     />
 
                     <CategoryCard
@@ -387,25 +540,29 @@
                       allowed={evaluation.categories.compression}
                       details={evaluation.categories.compression ? "Subtipos según clase y OD" : "Sin subtipos válidos con la clase/OD"}
                       items={[
-                        { label: "Swage", kind: "compression_swage", available: evaluation.details.compressionSubs.swage },
-                        { label: "Bite", kind: "compression_bite", available: evaluation.details.compressionSubs.bite },
-                        { label: "Typical", kind: "compression_typical", available: evaluation.details.compressionSubs.typical },
-                        { label: "Flared", kind: "compression_flared", available: evaluation.details.compressionSubs.flared },
-                        { label: "Press", kind: "compression_press", available: evaluation.details.compressionSubs.press },
+                        { label: JOINT_LABELS.compression_swage, kind: "compression_swage", available: evaluation.details.compressionSubs.swage },
+                        { label: JOINT_LABELS.compression_press, kind: "compression_press", available: evaluation.details.compressionSubs.press },
+                        { label: JOINT_LABELS.compression_typical, kind: "compression_typical", available: evaluation.details.compressionSubs.typical },
+                        { label: JOINT_LABELS.compression_bite, kind: "compression_bite", available: evaluation.details.compressionSubs.bite },
+                        { label: JOINT_LABELS.compression_flared, kind: "compression_flared", available: evaluation.details.compressionSubs.flared },
                       ]}
-                      onView={(kind) => setViewer({ open: true, title: `Compression – ${kind.split("_")[1]}`, kind })}
+                      onView={openViewer}
                     />
 
                     <CategoryCard
-                      title="Slip‑on joints"
+                      title="Slip-on Joints"
                       allowed={evaluation.categories.slipOn}
-                      details={evaluation.categories.slipOn ? "Machine‑grooved / Grip / Slip" : "Bloqueado por ubicación o clase"}
+                      details={evaluation.categories.slipOn ? "Machine Grooved / Grip / Slip" : "Bloqueado por ubicación o clase"}
                       items={[
-                        { label: "Machine grooved", kind: "slip_machine_grooved", available: evaluation.details.slipOnSubs.machine_grooved },
-                        { label: "Grip type", kind: "slip_grip", available: evaluation.details.slipOnSubs.grip },
-                        { label: "Slip type", kind: "slip_slip", available: evaluation.details.slipOnSubs.slip },
+                        {
+                          label: JOINT_LABELS.slip_machine_grooved,
+                          kind: "slip_machine_grooved",
+                          available: evaluation.details.slipOnSubs.machine_grooved,
+                        },
+                        { label: JOINT_LABELS.slip_grip, kind: "slip_grip", available: evaluation.details.slipOnSubs.grip },
+                        { label: JOINT_LABELS.slip_slip, kind: "slip_slip", available: evaluation.details.slipOnSubs.slip },
                       ]}
-                      onView={(kind) => setViewer({ open: true, title: `Slip‑on – ${kind.split("_")[1]}`, kind })}
+                      onView={openViewer}
                     />
                   </div>
 
@@ -425,22 +582,30 @@
               )}
             </section>
 
-            <footer className="pb-10 text-xs text-slate-400">v0.7 • Naval Ships – Motor de decisión con notas en español y visor de referencias gráficas (SVG) por tipo de unión.</footer>
+            <footer className="pb-10 text-xs text-slate-400">v0.7 • Naval Ships – Motor de decisión con notas en español y visor de referencias gráficas (imágenes) por tipo de unión.</footer>
           </main>
 
           {viewer?.open && (
-            <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setViewer(null)}>
+            <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={closeViewer}>
               <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center mb-3">
                   <h3 className="text-lg font-semibold">{viewer.title}</h3>
-                  <button className="ml-auto px-3 py-1 rounded-lg bg-slate-800 border border-slate-600" onClick={() => setViewer(null)}>
+                  <button className="ml-auto px-3 py-1 rounded-lg bg-slate-800 border border-slate-600" onClick={closeViewer}>
                     Cerrar
                   </button>
                 </div>
-                <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-center">
-                  {renderJointSVG(viewer.kind)}
+                <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-center min-h-[220px]">
+                  {viewerImage.loading ? (
+                    <div className="text-sm text-slate-300 animate-pulse">Cargando imagen…</div>
+                  ) : (
+                    <img
+                      src={viewerImage.src || JOINT_IMAGES.notFound}
+                      alt={viewer.title}
+                      className="max-h-[70vh] w-full object-contain rounded-lg"
+                    />
+                  )}
                 </div>
-                <div className="text-xs text-slate-400 mt-2">Esquema referencial estilizado a partir de Fig. 1.5.4/1.5.5. Cuando dispongamos de las imágenes oficiales se sustituyen aquí sin cambiar el flujo.</div>
+                <div className="text-xs text-slate-400 mt-2">Las imágenes se precargan al abrir el visor. Si la referencia específica no está disponible, se muestra un marcador genérico.</div>
               </div>
             </div>
           )}
@@ -493,96 +658,6 @@
           )}
         </div>
       );
-    }
-
-    function renderJointSVG(kind) {
-      const common = { width: 520, height: 160, viewBox: "0 0 520 160" };
-      const line = (x1, y1, x2, y2, extra = {}) => <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="white" strokeWidth={3} {...extra} />;
-      const rect = (x, y, w, h, extra = {}) => <rect x={x} y={y} width={w} height={h} fill="none" stroke="white" strokeWidth={3} {...extra} />;
-      const path = (d, extra = {}) => <path d={d} fill="none" stroke="white" strokeWidth={3} {...extra} />;
-      switch (kind) {
-        case "pipe_welded_brazed":
-          return (
-            <svg {...common}>
-              {line(40, 80, 240, 80)}
-              {line(280, 80, 480, 80)}
-              {path("M240 80 L260 50 L280 80", {})}
-            </svg>
-          );
-        case "compression_swage":
-          return (
-            <svg {...common}>
-              {line(40, 80, 200, 80)}
-              {line(320, 80, 480, 80)}
-              {rect(200, 60, 120, 40)}
-              {path("M200 60 L210 40 L310 40 L320 60", {})}
-            </svg>
-          );
-        case "compression_bite":
-          return (
-            <svg {...common}>
-              {line(40, 80, 200, 80)}
-              {line(320, 80, 480, 80)}
-              {rect(200, 55, 120, 50)}
-              {path("M220 105 L220 55", {})}
-              {path("M300 105 L300 55", {})}
-              {path("M240 80 L280 80", {})}
-            </svg>
-          );
-        case "compression_typical":
-          return (
-            <svg {...common}>
-              {line(40, 80, 200, 80)}
-              {line(320, 80, 480, 80)}
-              {rect(200, 55, 120, 50)}
-              {rect(230, 40, 60, 30)}
-            </svg>
-          );
-        case "compression_flared":
-          return (
-            <svg {...common}>
-              {line(40, 80, 210, 80)}
-              {line(310, 80, 480, 80)}
-              {path("M210 80 Q260 40 310 80", {})}
-            </svg>
-          );
-        case "compression_press":
-          return (
-            <svg {...common}>
-              {line(40, 90, 480, 90)}
-              {rect(220, 50, 80, 40)}
-              {path("M220 50 L210 30", {})}
-              {path("M300 50 L310 30", {})}
-            </svg>
-          );
-        case "slip_machine_grooved":
-          return (
-            <svg {...common}>
-              {line(40, 100, 480, 100)}
-              {rect(210, 60, 100, 40)}
-              {path("M210 60 L260 30 L310 60", {})}
-            </svg>
-          );
-        case "slip_grip":
-          return (
-            <svg {...common}>
-              {line(40, 100, 480, 100)}
-              {rect(200, 60, 120, 40)}
-              {path("M210 60 L260 30 L310 60", {})}
-              {path("M220 85 Q260 65 300 85", {})}
-            </svg>
-          );
-        case "slip_slip":
-          return (
-            <svg {...common}>
-              {line(40, 100, 480, 100)}
-              {rect(210, 60, 100, 40)}
-              {rect(230, 85, 60, 25)}
-            </svg>
-          );
-        default:
-          return <div className="text-slate-300">(Referencia no disponible)</div>;
-      }
     }
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
