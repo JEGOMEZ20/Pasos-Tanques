@@ -31,10 +31,60 @@
 
   <script type="module">
     import htm from 'https://unpkg.com/htm?module';
-    import { createElement as h, useState } from 'https://esm.sh/react@18';
+    import { createElement as h, useEffect, useRef, useState } from 'https://esm.sh/react@18';
     import ReactDOM from 'https://esm.sh/react-dom@18/client';
 
     const html = htm.bind(h);
+
+    const DEFAULT_JOINT_IMAGE = "./assets/joints/not-found.jpg";
+
+    const JOINT_IMAGES = {
+      pipe_welded_brazed: "./assets/joints/pipe_welded_brazed.jpg",
+      compression_swage: "./assets/joints/compression_swage.jpg",
+      compression_press: "./assets/joints/compression_press.jpg",
+      compression_typical: "./assets/joints/compression_typical.jpg",
+      compression_bite: "./assets/joints/compression_bite.jpg",
+      compression_flared: "./assets/joints/compression_flared.jpg",
+      slip_machine_grooved: "./assets/joints/slip_machine_grooved.jpg",
+      slip_grip: "./assets/joints/slip_grip.jpg",
+      slip_slip: "./assets/joints/slip_slip.jpg",
+    };
+
+    const JOINT_LABELS = {
+      pipe_welded_brazed: "Welded and Brazed Types (uniones soldadas y por braseado)",
+      compression_swage: "Swage Type (swage)",
+      compression_press: "Press Type (prensado)",
+      compression_typical: "Typical Compression Type (compresión “típica” con férula)",
+      compression_bite: "Bite Type (anillo mordedor)",
+      compression_flared: "Flared Type (abocardado/abocinado)",
+      slip_machine_grooved: "Machine Grooved Type — Roll Groove / Cut Groove (ranura laminada / ranura mecanizada)",
+      slip_grip: "Grip Type (tipo “grip”/agarre)",
+      slip_slip: "Slip Type (tipo “slip”/deslizante)",
+    };
+
+    const JOINT_CATEGORY_TITLES = {
+      pipe_welded_brazed: "Pipe unions",
+      compression_swage: "Compression couplings",
+      compression_press: "Compression couplings",
+      compression_typical: "Compression couplings",
+      compression_bite: "Compression couplings",
+      compression_flared: "Compression couplings",
+      slip_machine_grooved: "Slip-on Joints",
+      slip_grip: "Slip-on Joints",
+      slip_slip: "Slip-on Joints",
+    };
+
+    function parseViewerHash(hash) {
+      if (!hash) return null;
+      const match = hash.match(/^#view:([\w-]+)$/i);
+      return match ? match[1] : null;
+    }
+
+    function buildViewerTitle(kind) {
+      const label = JOINT_LABELS[kind] || kind;
+      const category = JOINT_CATEGORY_TITLES[kind];
+      return category ? `${category} · ${label}` : label;
+    }
 
     const SearchIcon = ({ className = "w-4 h-4", ...props }) =>
       h(
@@ -164,6 +214,9 @@
       const [sameMediumTank, setSameMediumTank] = useState(false);
       const [evaluation, setEvaluation] = useState(null);
       const [viewer, setViewer] = useState(null);
+      const [viewerImageSrc, setViewerImageSrc] = useState("");
+      const [viewerImageStatus, setViewerImageStatus] = useState("idle");
+      const viewerHistoryRef = useRef(false);
 
       function suggestClass(mediumGroup, P, T) {
         const lim = CLASS_LIMITS[mediumGroup];
@@ -223,6 +276,113 @@
         notes.push(...catNotes);
         return notes;
       }
+
+      function syncViewerFromHash() {
+        const kind = parseViewerHash(window.location.hash);
+        if (kind) {
+          setViewer({ open: true, kind, title: buildViewerTitle(kind) });
+        } else {
+          setViewer(null);
+          viewerHistoryRef.current = false;
+        }
+      }
+
+      function handleOpenViewer(kind) {
+        if (!kind) return;
+        const targetHash = `#view:${kind}`;
+        const basePath = `${window.location.pathname}${window.location.search}`;
+        const newUrl = `${basePath}${targetHash}`;
+        if (viewer?.open) {
+          history.replaceState(null, "", newUrl);
+        } else {
+          history.pushState(null, "", newUrl);
+          viewerHistoryRef.current = true;
+        }
+        syncViewerFromHash();
+      }
+
+      function handleCloseViewer() {
+        if (!viewer?.open) return;
+        const expectedHash = viewer?.kind ? `#view:${viewer.kind}` : null;
+        if (expectedHash && viewerHistoryRef.current && window.location.hash === expectedHash && window.history.length > 1) {
+          history.back();
+        } else {
+          const baseUrl = `${window.location.pathname}${window.location.search}`;
+          history.replaceState(null, "", baseUrl);
+          syncViewerFromHash();
+        }
+      }
+
+      useEffect(() => {
+        const handleLocationChange = () => syncViewerFromHash();
+        handleLocationChange();
+        window.addEventListener("hashchange", handleLocationChange);
+        window.addEventListener("popstate", handleLocationChange);
+        return () => {
+          window.removeEventListener("hashchange", handleLocationChange);
+          window.removeEventListener("popstate", handleLocationChange);
+        };
+      }, []);
+
+      useEffect(() => {
+        if (!(viewer?.open && viewer.kind)) {
+          setViewerImageStatus("idle");
+          setViewerImageSrc("");
+          return;
+        }
+
+        let cancelled = false;
+        const desiredSrc = JOINT_IMAGES[viewer.kind] || DEFAULT_JOINT_IMAGE;
+        setViewerImageStatus("loading");
+
+        const loader = new Image();
+        loader.src = desiredSrc;
+        loader.onload = () => {
+          if (!cancelled) {
+            setViewerImageSrc(desiredSrc);
+            setViewerImageStatus("loaded");
+          }
+        };
+        loader.onerror = () => {
+          if (cancelled) return;
+          if (desiredSrc === DEFAULT_JOINT_IMAGE) {
+            setViewerImageSrc(DEFAULT_JOINT_IMAGE);
+            setViewerImageStatus("error");
+            return;
+          }
+
+          const fallbackSrc = DEFAULT_JOINT_IMAGE;
+          const fallbackImg = new Image();
+          fallbackImg.src = fallbackSrc;
+          fallbackImg.onload = () => {
+            if (!cancelled) {
+              setViewerImageSrc(fallbackSrc);
+              setViewerImageStatus("loaded");
+            }
+          };
+          fallbackImg.onerror = () => {
+            if (!cancelled) {
+              setViewerImageSrc(fallbackSrc);
+              setViewerImageStatus("error");
+            }
+          };
+        };
+
+        return () => {
+          cancelled = true;
+        };
+      }, [viewer]);
+
+      useEffect(() => {
+        if (!viewer?.open) return;
+        const handleKeyDown = (event) => {
+          if (event.key === "Escape") {
+            handleCloseViewer();
+          }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+      }, [viewer?.open, viewer?.kind]);
 
       function evaluate() {
         const sys = NAVAL_SYSTEMS.find((s) => s.id === selectedSystemId) || NAVAL_SYSTEMS[0];
@@ -401,9 +561,13 @@
                         allowed=${evaluation.categories.pipeUnions}
                         details=${evaluation.details.pipeUnionsRule?.reason}
                         items=${[
-                          { label: "Welded/Brazed", kind: "pipe_welded_brazed", available: evaluation.categories.pipeUnions },
+                          {
+                            label: JOINT_LABELS.pipe_welded_brazed,
+                            kind: "pipe_welded_brazed",
+                            available: evaluation.categories.pipeUnions,
+                          },
                         ]}
-                        onView=${(kind) => setViewer({ open: true, title: "Pipe unions – welded/brazed", kind })}
+                        onView=${handleOpenViewer}
                       />
 
                       <${CategoryCard}
@@ -411,25 +575,57 @@
                         allowed=${evaluation.categories.compression}
                         details=${evaluation.categories.compression ? "Subtipos según clase y OD" : "Sin subtipos válidos con la clase/OD"}
                         items=${[
-                          { label: "Swage", kind: "compression_swage", available: evaluation.details.compressionSubs.swage },
-                          { label: "Bite", kind: "compression_bite", available: evaluation.details.compressionSubs.bite },
-                          { label: "Typical", kind: "compression_typical", available: evaluation.details.compressionSubs.typical },
-                          { label: "Flared", kind: "compression_flared", available: evaluation.details.compressionSubs.flared },
-                          { label: "Press", kind: "compression_press", available: evaluation.details.compressionSubs.press },
+                          {
+                            label: JOINT_LABELS.compression_swage,
+                            kind: "compression_swage",
+                            available: evaluation.details.compressionSubs.swage,
+                          },
+                          {
+                            label: JOINT_LABELS.compression_press,
+                            kind: "compression_press",
+                            available: evaluation.details.compressionSubs.press,
+                          },
+                          {
+                            label: JOINT_LABELS.compression_typical,
+                            kind: "compression_typical",
+                            available: evaluation.details.compressionSubs.typical,
+                          },
+                          {
+                            label: JOINT_LABELS.compression_bite,
+                            kind: "compression_bite",
+                            available: evaluation.details.compressionSubs.bite,
+                          },
+                          {
+                            label: JOINT_LABELS.compression_flared,
+                            kind: "compression_flared",
+                            available: evaluation.details.compressionSubs.flared,
+                          },
                         ]}
-                        onView=${(kind) => setViewer({ open: true, title: `Compression – ${kind.split("_")[1]}`, kind })}
+                        onView=${handleOpenViewer}
                       />
 
                       <${CategoryCard}
-                        title="Slip‑on joints"
+                        title="Slip-on Joints"
                         allowed=${evaluation.categories.slipOn}
                         details=${evaluation.categories.slipOn ? "Machine‑grooved / Grip / Slip" : "Bloqueado por ubicación o clase"}
                         items=${[
-                          { label: "Machine grooved", kind: "slip_machine_grooved", available: evaluation.details.slipOnSubs.machine_grooved },
-                          { label: "Grip type", kind: "slip_grip", available: evaluation.details.slipOnSubs.grip },
-                          { label: "Slip type", kind: "slip_slip", available: evaluation.details.slipOnSubs.slip },
+                          {
+                            label: JOINT_LABELS.slip_machine_grooved,
+                            kind: "slip_machine_grooved",
+                            available: evaluation.details.slipOnSubs.machine_grooved,
+                          },
+                          {
+                            label: JOINT_LABELS.slip_grip,
+                            kind: "slip_grip",
+                            available: evaluation.details.slipOnSubs.grip,
+                          },
+                          {
+                            label: JOINT_LABELS.slip_slip,
+                            kind: "slip_slip",
+                            available: evaluation.details.slipOnSubs.slip,
+                          },
                         ]}
-                        onView=${(kind) => setViewer({ open: true, title: `Slip‑on – ${kind.split("_")[1]}`, kind })}
+                        onView=${handleOpenViewer}
                       />
                     </div>
 
@@ -447,23 +643,35 @@
             }
           </section>
 
-          <footer className="pb-10 text-xs text-slate-400">v0.7 • Naval Ships – Motor de decisión con notas en español y visor de referencias gráficas (SVG) por tipo de unión.</footer>
+          <footer className="pb-10 text-xs text-slate-400">v0.7 • Naval Ships – Motor de decisión con notas en español y visor de referencias gráficas (imágenes) por tipo de unión.</footer>
         </main>
 
         ${
           viewer?.open
-            ? html`<div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick=${() => setViewer(null)}>
+            ? html`<div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick=${handleCloseViewer}>
                 <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 max-w-2xl w-full" onClick=${(e) => e.stopPropagation()}>
                   <div className="flex items-center mb-3">
                     <h3 className="text-lg font-semibold">${viewer.title}</h3>
-                    <button className="ml-auto px-3 py-1 rounded-lg bg-slate-800 border border-slate-600" onClick=${() => setViewer(null)}>
+                    <button className="ml-auto px-3 py-1 rounded-lg bg-slate-800 border border-slate-600" onClick=${handleCloseViewer}>
                       Cerrar
                     </button>
                   </div>
-                  <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-center">
-                    ${renderJointSVG(viewer.kind)}
+                  <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-center min-h-[280px]">
+                    ${
+                      viewerImageStatus === "loading" || viewerImageStatus === "idle"
+                        ? html`<div className="text-sm text-slate-300 animate-pulse">Cargando imagen...</div>`
+                        : html`<img
+                            src=${viewerImageSrc || DEFAULT_JOINT_IMAGE}
+                            alt=${JOINT_LABELS[viewer.kind] || viewer.title || "Joint reference"}
+                            className="max-h-[70vh] w-full object-contain rounded-lg"
+                          />`
+                    }
                   </div>
-                  <div className="text-xs text-slate-400 mt-2">Esquema referencial estilizado a partir de Fig. 1.5.4/1.5.5. Cuando dispongamos de las imágenes oficiales se sustituyen aquí sin cambiar el flujo.</div>
+                  ${
+                    viewerImageStatus === "error"
+                      ? html`<div className="text-xs text-rose-300 mt-2">No se encontró una imagen específica; se muestra la referencia genérica.</div>`
+                      : html`<div className="text-xs text-slate-400 mt-2">Referencia fotográfica para el tipo de unión seleccionado.</div>`
+                  }
                 </div>
               </div>`
             : ""
@@ -515,51 +723,6 @@
             : ""
         }
       </div>`;
-    }
-
-    function renderJointSVG(kind) {
-      const common = { width: 520, height: 160, viewBox: "0 0 520 160" };
-      const line = (x1, y1, x2, y2, extra = {}) => h("line", { x1, y1, x2, y2, stroke: "white", strokeWidth: 3, ...extra });
-      const rect = (x, y, w, h, extra = {}) => h("rect", { x, y, width: w, height: h, fill: "none", stroke: "white", strokeWidth: 3, ...extra });
-      const path = (d, extra = {}) => h("path", { d, fill: "none", stroke: "white", strokeWidth: 3, ...extra });
-      switch (kind) {
-        case "pipe_welded_brazed":
-          return h("svg", common, line(40, 80, 240, 80), line(280, 80, 480, 80), path("M240 80 L260 50 L280 80"));
-        case "compression_swage":
-          return h("svg", common, line(40, 80, 200, 80), line(320, 80, 480, 80), rect(200, 60, 120, 40), path("M200 60 L210 40 L310 40 L320 60"));
-        case "compression_bite":
-          return h(
-            "svg",
-            common,
-            line(40, 80, 200, 80),
-            line(320, 80, 480, 80),
-            rect(200, 55, 120, 50),
-            path("M220 105 L220 55"),
-            path("M300 105 L300 55"),
-            path("M240 80 L280 80")
-          );
-        case "compression_typical":
-          return h("svg", common, line(40, 80, 200, 80), line(320, 80, 480, 80), rect(200, 55, 120, 50), rect(230, 40, 60, 30));
-        case "compression_flared":
-          return h("svg", common, line(40, 80, 210, 80), line(310, 80, 480, 80), path("M210 80 Q260 40 310 80"));
-        case "compression_press":
-          return h("svg", common, line(40, 90, 480, 90), rect(220, 50, 80, 40), path("M220 50 L210 30"), path("M300 50 L310 30"));
-        case "slip_machine_grooved":
-          return h("svg", common, line(40, 100, 480, 100), rect(210, 60, 100, 40), path("M210 60 L260 30 L310 60"));
-        case "slip_grip":
-          return h(
-            "svg",
-            common,
-            line(40, 100, 480, 100),
-            rect(200, 60, 120, 40),
-            path("M210 60 L260 30 L310 60"),
-            path("M220 85 Q260 65 300 85")
-          );
-        case "slip_slip":
-          return h("svg", common, line(40, 100, 480, 100), rect(210, 60, 100, 40), rect(230, 85, 60, 25));
-        default:
-          return html`<div className="text-slate-300">(Referencia no disponible)</div>`;
-      }
     }
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
