@@ -509,7 +509,7 @@
 
             <div className="grid md:grid-cols-1 gap-4">
               <${Field} label="Diámetro exterior OD [mm]">
-                <input type="number" className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2" value=${odMM} onChange=${(e) => setOdMM(Number(e.target.value))} />
+                <input type="number" className="w-full max-w-xs bg-slate-800 border border-slate-600 rounded-xl px-3 py-2" value=${odMM} onChange=${(e) => setOdMM(Number(e.target.value))} />
               </${Field}>
             </div>
 
