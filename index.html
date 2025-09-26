@@ -27,6 +27,23 @@
     margin: 0 auto;
     padding: 48px 24px 64px;
   }
+  .brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 36px;
+    padding: 18px 26px;
+    max-width: 320px;
+    background: rgba(15, 23, 42, 0.65);
+    border-radius: 999px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.55);
+  }
+  .brand img {
+    width: 180px;
+    height: auto;
+    display: block;
+  }
   header {
     margin-bottom: 56px;
   }
@@ -153,52 +170,25 @@
     text-decoration: none;
   }
   footer .credits {
-    margin-top: 20px;
+    margin-top: 18px;
     font-size: 12px;
     line-height: 1.6;
-    color: rgba(226, 232, 240, 0.75);
+    color: rgba(226, 232, 240, 0.72);
+ main
   }
   footer .credits strong {
     color: #f8fafc;
   }
-  @media (max-width: 880px) {
-    .hero {
-      grid-template-columns: 1fr;
-      text-align: center;
-      padding: 18px 18px 36px;
-    }
-    .hero-text p {
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .hero-logo {
-      min-height: 0;
-      padding: 24px;
-      max-width: 220px;
-      margin: 0 auto;
-    }
-  }
-  @media (max-width: 600px) {
-    .hero {
-      padding: 28px 22px 32px;
-    }
-  }
+
 </style>
 </head>
 <body>
   <div class="wrap">
+    <div class="brand">
+      <img src="assets/joints/cotec.jpg" alt="COTECMAR" />
+    </div>
     <header>
-      <div class="hero">
-        <div class="hero-text">
-          <h1>Herramientas normativas para sistemas de tuberías</h1>
-          <p>
-            Accede a los asistentes interactivos desarrollados para comprobar requisitos reglamentarios en buques. Elige la función que necesitas: compatibilidad de tuberías que atraviesan tanques y espacios, o el nuevo asesor para comprobación del tipo de juntas que se pueden usar según LR Naval Ships v0.7.
-          </p>
-        </div>
-        <div class="hero-logo">
-          <img src="assets/joints/cotec.jpg" alt="COTECMAR" />
-        </div>
-      </div>
+
     </header>
 
     <main class="grid">
