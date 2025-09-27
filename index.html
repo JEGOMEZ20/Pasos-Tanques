@@ -27,25 +27,11 @@
     margin: 0 auto;
     padding: 48px 24px 64px;
   }
-  .brand {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0 auto 36px;
-    padding: 18px 26px;
-    max-width: 320px;
-    background: rgba(15, 23, 42, 0.65);
-    border-radius: 999px;
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.55);
-  }
-  .brand img {
-    width: 180px;
-    height: auto;
-    display: block;
-  }
   header {
     margin-bottom: 56px;
+  }
+  header .hero {
+    padding: 42px 46px;
   }
   .hero {
     display: grid;
@@ -62,29 +48,25 @@
   }
   .hero-text p {
     margin: 0;
-    font-size: 16px;
+    font-size: 17px;
     line-height: 1.7;
     max-width: 620px;
-    color: rgba(226, 232, 240, 0.85);
+    color: rgba(226, 232, 240, 0.92);
   }
   .hero-logo {
     justify-self: center;
-    background: linear-gradient(160deg, rgba(30, 64, 175, 0.55), rgba(15, 23, 42, 0.96));
-    border-radius: 22px;
-    padding: 28px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.24), 0 16px 36px rgba(2, 6, 23, 0.55);
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 160px;
+    min-height: 180px;
+    max-width: 260px;
   }
   .hero-logo img {
-    width: 120px;
+    width: 180px;
     max-width: 100%;
     height: auto;
     display: block;
-    filter: drop-shadow(0 10px 20px rgba(2, 6, 23, 0.35));
+    filter: drop-shadow(0 14px 28px rgba(2, 6, 23, 0.45));
   }
   .grid {
     display: grid;
@@ -174,21 +156,50 @@
     font-size: 12px;
     line-height: 1.6;
     color: rgba(226, 232, 240, 0.72);
- main
   }
   footer .credits strong {
     color: #f8fafc;
+  }
+
+  @media (max-width: 720px) {
+    header .hero {
+      padding: 32px 26px;
+    }
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 28px;
+      text-align: center;
+      padding-bottom: 16px;
+    }
+    .hero-text h1 {
+      font-size: clamp(30px, 7vw, 38px);
+    }
+    .hero-text p {
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-logo {
+      justify-self: center;
+      max-width: 220px;
+    }
   }
 
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="brand">
-      <img src="assets/joints/cotec.jpg" alt="COTECMAR" />
-    </div>
     <header>
-
+      <section class="hero">
+        <div class="hero-text">
+          <h1>Herramientas normativas para sistemas de tuberías</h1>
+          <p>
+            Accede a los asistentes interactivos desarrollados para comprobar requisitos reglamentarios en buques. Elige la función que necesitas: compatibilidad de tuberías que atraviesan tanques y espacios, o el asesor para comprobación del tipo de juntas que se pueden usar según LR Naval Ships v0.7.
+          </p>
+        </div>
+        <div class="hero-logo">
+          <img src="assets/joints/cotec.jpg" alt="COTECMAR" />
+        </div>
+      </section>
     </header>
 
     <main class="grid">
